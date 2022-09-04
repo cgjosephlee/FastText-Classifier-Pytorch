@@ -1,0 +1,1 @@
+# FastText Classifier in Pytorch

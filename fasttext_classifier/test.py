@@ -36,13 +36,7 @@ config = FastTextClassifierConfig(
 )
 
 train_corpus = [_tokenize(x) for x in train_iter["text"]]
-tokenizer = FastTextEncoder(
-    train_corpus,
-    min_n=config.min_n,
-    max_n=config.max_n,
-    word_ngrams=config.word_ngrams,
-    bucket=config.bucket,
-)
+tokenizer = FastTextEncoder(train_corpus, config=config)
 config.vocab_size = tokenizer.vocab_size
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

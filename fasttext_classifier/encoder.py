@@ -10,6 +10,7 @@ import pickle
 # from collections.abc import Iterable  # python >= 3.9
 from typing import Iterable  # python < 3.9
 from typing import Union, Optional, List, Dict
+from .model import FastTextClassifierConfig
 
 DEFAULT_RESERVED_TOKENS = ["<pad>", "<unk>", "</s>"]
 DEFAULT_PAD_INDEX = 0
@@ -25,8 +26,9 @@ class FastTextEncoder:
     def __init__(
         self,
         texts: Union[Iterable[List[str]], List[List[str]]],
+        config: Optional[FastTextClassifierConfig] = None,
         min_count: int = 1,
-        # max_vocab_size=None,
+        # max_vocab_size = None,
         min_n: int = 0,
         max_n: int = 0,
         word_ngrams: int = 1,
@@ -34,6 +36,8 @@ class FastTextEncoder:
     ):
         """
         Build tokenizer. Require segmented sentences.
+
+        config: used to import parameters, overwrites other arguments
         """
         # defaults
         self.reserved_tokens = DEFAULT_RESERVED_TOKENS
@@ -46,6 +50,13 @@ class FastTextEncoder:
         self.max_n = max_n
         self.word_ngrams = word_ngrams
         self.bucket = bucket
+
+        if config is not None:
+            self.min_count = config.min_count
+            self.min_n = config.min_n
+            self.max_n = config.max_n
+            self.word_ngrams = config.word_ngrams
+            self.bucket = config.bucket
 
         self.tokens = Counter()
 
@@ -66,20 +77,32 @@ class FastTextEncoder:
                 self.index_to_token.append(token)
                 self.token_to_index[token] = len(self.index_to_token) - 1
 
-        self.initNgrams()
+        self.__initNgrams()
 
         # release memory
         self.tokens = Counter()
 
     @property
-    def vocab(self) -> List:
+    def vocab(self) -> List[str]:
         return self.index_to_token
 
     @property
     def vocab_size(self) -> int:
         return len(self.index_to_token)
 
-    def initNgrams(self):
+    @property
+    def parameters(self) -> Dict:
+        out = {
+            "min_count": self.min_count,
+            "min_n": self.min_n,
+            "max_n": self.max_n,
+            "word_ngrams": self.word_ngrams,
+            "bucket": self.bucket,
+            "vocab_size": self.vocab_size,
+        }
+        return out
+
+    def __initNgrams(self):
         """
         Initialize char ngrams for all vocabularies.
         """
@@ -284,9 +307,7 @@ class FastTextEncoder:
     def _compute_wordNgram_hashes(
         cls, word_hashes: List[int], word_ngrams: int, bucket: int
     ) -> List[int]:
-        """
-        ref: https://github.com/facebookresearch/fastText/blob/a20c0d27cd0ee88a25ea0433b7f03038cd728459/src/dictionary.cc#L312
-        """
+        # ref: https://github.com/facebookresearch/fastText/blob/a20c0d27cd0ee88a25ea0433b7f03038cd728459/src/dictionary.cc#L312
         wordNgram_hashes = []
         if bucket > 0:
             for i in range(len(word_hashes)):

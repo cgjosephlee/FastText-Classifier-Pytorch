@@ -1,11 +1,14 @@
 from dataclasses import dataclass
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import pytorch_lightning as pl
 
 
 @dataclass
 class FastTextClassifierConfig:
     vocab_size: int = 0
+    min_count: int = 1
     min_n: int = 2
     max_n: int = 5
     word_ngrams: int = 1
@@ -18,7 +21,7 @@ class FastTextClassifierConfig:
     batch_size: int = 256
 
 
-class FastTextClassifier(nn.Module):
+class FastTextClassifier(pl.LightningModule):
     def __init__(self, config: FastTextClassifierConfig):
         super(FastTextClassifier, self).__init__()
         self.config = config
@@ -33,3 +36,14 @@ class FastTextClassifier(nn.Module):
         output = torch.sum(output, 1) / ntokens.view([-1, 1])
         output = self.fc1(output)
         return output
+
+    def training_step(self, batch, batch_idx):
+        labels = batch["label"]
+        input_ids = batch["input_ids"]
+        output = self(input_ids=input_ids)
+        loss = F.cross_entropy(output, labels)
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.config.lr)
+        return optimizer

@@ -18,7 +18,7 @@ class FastTextClassifierConfig:
     dim: int = 100
     bucket: int = 2000000
     lr: float = 0.1
-    lrUpdateRate: int = 100  # update lr by n tokens, here we update by batch
+    lrUpdateRate: int = 1  # update lr by n tokens originally, here we update by n batch
     num_classes: int = 2
     epoch: int = 5
     batch_size: int = 256
@@ -73,13 +73,16 @@ class FastTextClassifier(pl.LightningModule):
     def predict_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
         output = self(input_ids=input_ids)
-        return output
+        score, label = torch.max(nn.functional.softmax(output, 1), 1)
+        return {
+            "label": label.numpy(),
+            "score": score.numpy()
+        }
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.config.lr)
-        return optimizer
-        # scheduler = torch.optim.lr_scheduler.LinearLR(
-        #     optimizer, start_factor=1, end_factor=0, total_iters=self.config.epoch
-        # )
-        # scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
-        # return [optimizer], [scheduler]
+        scheduler = torch.optim.lr_scheduler.LinearLR(
+            optimizer, start_factor=1, end_factor=0, #total_iters=self.config.epoch
+        )
+        scheduler = {"scheduler": scheduler, "interval": "step", "frequency": self.config.lrUpdateRate}
+        return [optimizer], [scheduler]

@@ -19,7 +19,7 @@ class FastTextClassifierConfig:
     bucket: int = 2000000
     lr: float = 0.1
     lrUpdateRate: int = 100  # update lr by n tokens, here we update by batch
-    num_classes: int = 1
+    num_classes: int = 2
     epoch: int = 5
     batch_size: int = 256
 
@@ -33,7 +33,10 @@ class FastTextClassifier(pl.LightningModule):
             config.vocab_size + config.bucket, config.dim, padding_idx=0
         )
         self.fc1 = nn.Linear(config.dim, config.num_classes)
-        self.val_acc = torchmetrics.Accuracy()
+        self.val_acc = torchmetrics.Accuracy(task="multiclass", num_classes=config.num_classes, compute_on_cpu=True)
+        self.val_prec = torchmetrics.Precision(task="multiclass", num_classes=config.num_classes, average="weighted", compute_on_cpu=True)
+        self.val_recall = torchmetrics.Recall(task="multiclass", num_classes=config.num_classes, average="weighted", compute_on_cpu=True)
+        self.val_f1 = torchmetrics.F1Score(task="multiclass", num_classes=config.num_classes, average="weighted", compute_on_cpu=True)
 
     def forward(self, input_ids):
         ntokens = torch.count_nonzero(input_ids)
@@ -56,30 +59,21 @@ class FastTextClassifier(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         output, loss = self.step(batch, batch_idx)
-        # labels_true = batch["label"].numpy()
-        # labels_pred = output.numpy().argmax(axis=1)
-        return {
-            "loss": loss,
-            "labels_true": batch["label"],
-            "labels_pred": output.argmax(dim=1)
-        }
+        self.val_acc.update(output, batch["label"])
+        self.val_prec.update(output, batch["label"])
+        self.val_recall.update(output, batch["label"])
+        self.val_f1.update(output, batch["label"])
+        self.log("eval:acc", self.val_acc)
+        self.log("eval:precision", self.val_prec)
+        self.log("eval:recall", self.val_recall)
+        self.log("eval:f1score", self.val_f1)
 
-    def validation_epoch_end(self, outputs):
-        self.log()
-        # a = accuracy_score(labels_true, labels_pred)
-        # p, r, f, _ = precision_recall_fscore_support(
-        #     labels_true, labels_pred, average="weighted", zero_division=0
-        # )
-        # self.log_dict({
-        #     "loss": loss,
-        #     "accuracy": a,
-        #     "precision": p,
-        #     "recall": r,
-        #     "f1": f,
-        #     })
+    test_step = validation_step
 
-    def test_step():
-        pass
+    def predict_step(self, batch, batch_idx):
+        input_ids = batch["input_ids"]
+        output = self(input_ids=input_ids)
+        return output
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.config.lr)

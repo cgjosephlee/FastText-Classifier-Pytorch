@@ -1,0 +1,2 @@
+use fastText bin in Pytorch
+https://github.com/facebookresearch/fastText/issues/1062#issuecomment-627830841

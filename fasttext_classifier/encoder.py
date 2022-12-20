@@ -7,8 +7,8 @@ from gensim.models.fasttext_inner import (
 import torch
 import pickle
 
-# from collections.abc import Iterable  # python >= 3.9
-from typing import Iterable  # python < 3.9
+from collections.abc import Iterable  # python >= 3.9
+# from typing import Iterable  # python < 3.9
 from typing import Union, Optional, List, Dict
 from .model import FastTextClassifierConfig
 

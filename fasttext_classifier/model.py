@@ -82,7 +82,7 @@ class FastTextClassifier(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.config.lr)
         scheduler = torch.optim.lr_scheduler.LinearLR(
-            optimizer, start_factor=1, end_factor=0, #total_iters=self.config.epoch
+            optimizer, start_factor=1, end_factor=0, total_iters=self.trainer.estimated_stepping_batches
         )
         scheduler = {"scheduler": scheduler, "interval": "step", "frequency": self.config.lrUpdateRate}
         return [optimizer], [scheduler]

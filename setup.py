@@ -9,7 +9,7 @@ setup(
     description="FastText classifier in Pytorch",
     packages=find_packages(),
     install_requires=[
-        # "torch",
+        "torch",
         "pytorch-lightning",
         "gensim"
         ],
